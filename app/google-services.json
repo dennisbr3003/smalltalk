@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "56149113169",
+    "project_id": "smalltalk-f0aad",
+    "storage_bucket": "smalltalk-f0aad.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:56149113169:android:9da0c9d2d933d4e694fb70",
+        "android_client_info": {
+          "package_name": "com.dennis_brink.android.smalltalk"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "56149113169-jpe3t4n10vud691hfbl2sci5kc0495s5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAima9cWv1bHXm_FCheHLEwfaSq3n2SzN0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "56149113169-jpe3t4n10vud691hfbl2sci5kc0495s5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

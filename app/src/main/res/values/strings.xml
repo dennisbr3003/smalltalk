@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Small Talk</string>
+    <string name="_forgotpwdinsstr"><font color='#000000'>If you have forgotten your password we will send an e-mail to the address entered</font><font color='#FF6D00'><b>\t below</b></font><font color='#000000'>\t with a password reset link...</font></string>
+    <string name="_send">Send</string>
+</resources>
