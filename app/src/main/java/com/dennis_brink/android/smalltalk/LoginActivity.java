@@ -46,7 +46,6 @@ public class LoginActivity extends AppCompatActivity {
         btnSignUp = findViewById(R.id.btnSignUp);
 
         auth = FirebaseAuth.getInstance();
-        fbuser = auth.getCurrentUser();
 
         btnSignIn.setOnClickListener(view -> {
 
@@ -60,7 +59,7 @@ public class LoginActivity extends AppCompatActivity {
             String userPassword = editTextPassword.getText().toString();
 
             if(userEmail == null || userEmail.isEmpty()){
-                Toast.makeText(this, "Please enter a e-mail address", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Please enter an e-mail address", Toast.LENGTH_SHORT).show();
                 btn.setClickable(true);
                 return;
             }
@@ -128,7 +127,7 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-
+        fbuser = auth.getCurrentUser();
         if(fbuser != null ){
             startMainActivity();
         }
