@@ -129,6 +129,7 @@ public class LoginActivity extends AppCompatActivity {
         super.onStart();
         fbuser = auth.getCurrentUser();
         if(fbuser != null ){
+            Log.d("DENNIS_B", "(MainActivity) - onStart(): User " + fbuser.getEmail() + " is logged in. Start MainActivity");
             startMainActivity();
         }
     }

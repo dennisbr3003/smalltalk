@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -27,6 +28,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
 import java.util.HashMap;
@@ -41,6 +43,7 @@ public class ProfileActivity extends AppCompatActivity {
     private ActivityResultLauncher<Intent> activityResultLauncherForProfilePicture;
     private TextInputEditText editTextDisplayName;
     private CircleImageView imgAvatar;
+    private ProgressBar progressBar;
     private Button bntSave;
     boolean imageIsSelected = false;
 
@@ -52,16 +55,20 @@ public class ProfileActivity extends AppCompatActivity {
     FirebaseUser user;
     String image_url;
 
+    ValueEventListener profileValueEventListener;
+
     Map<String, Object> map = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
         imgAvatar = findViewById(R.id.imgCircleAccountProfile);
         editTextDisplayName = findViewById(R.id.editTextSignUpNameProfile);
         bntSave = findViewById(R.id.btnSignUpSignUpProfile);
+        progressBar = findViewById(R.id.progressBarProfile);
 
         registerActivityResultLauncherForProfilePicture();
 
@@ -74,6 +81,8 @@ public class ProfileActivity extends AppCompatActivity {
 
         bntSave.setOnClickListener(view -> saveUserData());
         imgAvatar.setOnClickListener(view -> deviceImageSelector());
+
+        Log.d("DENNIS_B", "(ProfileActivity) - onCreate(). Start loading userdata from FireBase");
 
         loadUserData();
 
@@ -114,28 +123,44 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void loadUserData() {
 
-        Log.d("DENNIS_B", "Loading userdata");
+        Log.d("DENNIS_B", "(ProfileActivity) - loadUserData()");
 
-        dbref.child("users").child(user.getUid()).addValueEventListener(new ValueEventListener() {
+        progressBar.setVisibility(View.VISIBLE);
+
+        profileValueEventListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-
                 String name = snapshot.child("username").getValue().toString();
                 image_url = snapshot.child("avatar").getValue().toString();
 
                 editTextDisplayName.setText(name);
                 if(!image_url.equals("null")){
-                    Picasso.get().load(image_url).into(imgAvatar);
+                    Picasso.get().load(image_url).into(imgAvatar, new Callback() {
+                        @Override
+                        public void onSuccess() {
+                            progressBar.setVisibility(View.INVISIBLE);
+                        }
+                        @Override
+                        public void onError(Exception e) {
+                            Log.d("DENNIS_B", "(ProfileActivity) - profileValueEventListener/onDataChange: User data not loaded " + e.getLocalizedMessage());
+                            progressBar.setVisibility(View.INVISIBLE);
+                        }
+                    });
+                } else {
+                    imgAvatar.setImageResource(R.drawable.ic_baseline_account_circle_24);
+                    progressBar.setVisibility(View.INVISIBLE);
                 }
-
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
                 Toast.makeText(ProfileActivity.this, "User data could not be loaded", Toast.LENGTH_SHORT).show();
-                Log.d("DENNIS_B", "User data not loaded " + error.toException().getLocalizedMessage());
+                Log.d("DENNIS_B", "(ProfileActivity) - profileValueEventListener/onCancelled: Error " + error.toException().getLocalizedMessage());
+                progressBar.setVisibility(View.INVISIBLE);
             }
-        });
+        };
+        dbref.child("users").child(user.getUid()).addValueEventListener(profileValueEventListener);
+
     }
 
     private void saveUserData(){
@@ -143,7 +168,7 @@ public class ProfileActivity extends AppCompatActivity {
         String userName = editTextDisplayName.getText().toString();
         map.put("/users/" + user.getUid() + "/username/", userName);
 
-        Log.d("DENNIS_B", "Image (new) is selected: " + imageIsSelected);
+        Log.d("DENNIS_B", "(ProfileActivity) - saveUserData(): Image (new) is selected: " + imageIsSelected);
 
         if(imageIsSelected){
             try { // first delete the old avatar (the file, the reference will be overwritten)
@@ -152,10 +177,10 @@ public class ProfileActivity extends AppCompatActivity {
                     StorageReference imgRefOrg = fs.getReferenceFromUrl(image_url);
                     imgRefOrg.delete().addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
-                            Log.d("DENNIS_B", "Old avatar deleted");
+                            Log.d("DENNIS_B", "(ProfileActivity) - saveUserData(): Old avatar deleted");
                         } else {
-                            Log.d("DENNIS_B", "Error deleting old avatar (still saving new profile picture)");
-                            Log.d("DENNIS_B", "Storage error: " + task.getException().getLocalizedMessage());
+                            Log.d("DENNIS_B", "(ProfileActivity) - saveUserData(): Error deleting old avatar (still saving new profile picture)");
+                            Log.d("DENNIS_B", "(ProfileActivity) - saveUserData(): Storage error: " + task.getException().getLocalizedMessage());
                         }
                     });
                 }
@@ -163,10 +188,10 @@ public class ProfileActivity extends AppCompatActivity {
 
             } catch (Exception e) {
                 Toast.makeText(this, "User data could not be saved.", Toast.LENGTH_SHORT).show();
-                Log.d("DENNIS_B", "2. Error deleting old avatar (probably due to a bug) : " + e.getLocalizedMessage());
+                Log.d("DENNIS_B", "(ProfileActivity) - saveUserData(): " + e.getLocalizedMessage());
             }
         } else {
-            Log.d("DENNIS_B", "No new image. To be saved: " + map.toString());
+            Log.d("DENNIS_B", "(ProfileActivity) - saveUserData(): No (new) image selected. To be saved: " + map.toString());
             saveDataToDatabase();
         }
 
@@ -175,10 +200,10 @@ public class ProfileActivity extends AppCompatActivity {
     private void saveDataToDatabase(){
         dbref.updateChildren(map).addOnCompleteListener(task -> {
             if(task.isSuccessful()){
-                Log.d("DENNIS_B", "saveDataToDatabase() Data sent to db successfully");
+                Log.d("DENNIS_B", "(ProfileActivity) - saveDataToDatabase(): Data sent to db successfully");
                 finish();
             } else{
-                Log.d("DENNIS_B", "saveDataToDatabase() Error saving data " + task.getException().getLocalizedMessage());
+                Log.d("DENNIS_B", "(ProfileActivity) - saveDataToDatabase(): Error saving data " + task.getException().getLocalizedMessage());
                 Toast.makeText(ProfileActivity.this, "User data could not be saved", Toast.LENGTH_SHORT).show();
             }
         });
@@ -189,24 +214,37 @@ public class ProfileActivity extends AppCompatActivity {
         UUID imageId = UUID.randomUUID();
         String filename = "images/" + imageId.toString();
 
-        Log.d("DENNIS_B", "saveImage() New avatar filename: " + filename);
+        Log.d("DENNIS_B", "(ProfileActivity) - saveImageToStorage(): New avatar filename: " + filename);
 
         fsref.child(filename).putFile(imageUri).addOnSuccessListener(taskSnapshot -> {
             if(taskSnapshot.getTask().isSuccessful()){
                 StorageReference imgRef = fs.getReference(filename); // create a dbref to the picture
                 imgRef.getDownloadUrl().addOnSuccessListener(uri -> {
                     String fileUrl = uri.toString();
-                    Log.d("DENNIS_B", "saveImage() New avatar filename:  New avatar file saved correctly as: " + fileUrl);
                     map.put("/users/" + user.getUid() + "/avatar/", fileUrl);
-                    Log.d("DENNIS_B", "saveImage() To be saved: " + map.toString());
+                    Log.d("DENNIS_B", "(ProfileActivity) - saveImageToStorage(): To be saved: " + map.toString());
                     saveDataToDatabase();
                 });
             } else {
-                Log.d("DENNIS_B", "saveImage() Error saving avatar to STORAGE: " + taskSnapshot.getTask().getException().getLocalizedMessage());
+                Log.d("DENNIS_B", "(ProfileActivity) - saveImageToStorage(): Error saving to STORAGE: " + taskSnapshot.getTask().getException().getLocalizedMessage());
                 map.put("/users/" + user.getUid() + "/avatar/", "null");
             }
         });
 
+    }
+
+    @Override
+    public void onBackPressed() {
+        //super.onBackPressed();  <-- Remove this for sure. Causes very unpredictable behaviour
+        Log.d("DENNIS_B", "(ProfileActivity) - onBackPressed(): Activity will be finished");
+        finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        Log.d("DENNIS_B", "(ProfileActivity) - onStop():  Removing event listener <profileValueEventListener>");
+        dbref.child("users").child(user.getUid()).removeEventListener(profileValueEventListener);
+        super.onDestroy();
     }
 
 }

@@ -55,7 +55,7 @@ public class SignUpActivity extends AppCompatActivity {
         editTextEmail = findViewById(R.id.editTextSignUpEmail);
         editTextPassword = findViewById(R.id.editTekstSignUpPassword);
         imgAvatar = findViewById(R.id.imgCircleAccount);
-        progressBar = findViewById(R.id.progressBarSignUpSignUp);
+        progressBar = findViewById(R.id.progressBarProfile);
 
         btnSignUp = findViewById(R.id.btnSignUpSignUp);
 
@@ -97,7 +97,7 @@ public class SignUpActivity extends AppCompatActivity {
             signIn(userEmail, userPassword, userName);
 
             btn.setClickable(true);
-            
+
         });
 
         imgAvatar.setOnClickListener(view -> {
@@ -109,9 +109,9 @@ public class SignUpActivity extends AppCompatActivity {
 
     private void signIn(String userEmail, String userPassword, String userName) {
 
-        Log.d("DENNIS_B", "E-mail: " + userEmail);
-        Log.d("DENNIS_B", "Password: " + userPassword);
-        Log.d("DENNIS_B", "Display name: " + userName);
+        Log.d("DENNIS_B", "(SignUpActivity) - signIn(): E-mail: " + userEmail);
+        Log.d("DENNIS_B", "(SignUpActivity) - signIn(): Password: " + userPassword);
+        Log.d("DENNIS_B", "(SignUpActivity) - signIn(): Display name: " + userName);
 
         progressBar.setVisibility(View.VISIBLE);
 
@@ -128,29 +128,28 @@ public class SignUpActivity extends AppCompatActivity {
                             imgRef.getDownloadUrl().addOnSuccessListener(uri -> {
                                 String fileUrl = uri.toString();
                                 dbref.child("users").child(auth.getUid()).child("avatar").setValue(fileUrl).addOnSuccessListener(unused -> {
-                                    Log.d("DENNIS_B", "Saved avatar URL to RTDB: user/" + auth.getUid() + "/avatar");
+                                    Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Saved avatar URL to RTDB: user/" + auth.getUid() + "/avatar");
                                 }).addOnFailureListener(e -> {
                                     Toast.makeText(SignUpActivity.this, "User avatar NOT saved", Toast.LENGTH_SHORT).show();
-                                    Log.d("DENNIS_B", "Error saving URL to RTDB: " + e.getLocalizedMessage());
+                                    Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword():  Error saving URL to RTDB: " + e.getLocalizedMessage());
                                     return;
                                 });
                             });
                         } else {
                             Toast.makeText(SignUpActivity.this, "User avatar NOT saved", Toast.LENGTH_SHORT).show();
-                            Log.d("DENNIS_B", "Error saving avatar to STORAGE: " + taskSnapshot.getTask().getException().getLocalizedMessage());
+                            Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Error saving avatar to STORAGE: " + taskSnapshot.getTask().getException().getLocalizedMessage());
                             return;
                         }
                     });
                 } else {
+                    Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): No picture selected. Save 'null' to RTDB");
                     dbref.child("users").child(auth.getUid()).child("avatar").setValue("null");
                 }
-                Intent i = new Intent(SignUpActivity.this, MainActivity.class);
-                i.putExtra("username", userName);
-                startActivity(i);
+                // Start MainActivity via onStart in LoginActivity since the newly created user IS logged in
                 finish();
             } else {
                 Toast.makeText(SignUpActivity.this, "User account NOT created", Toast.LENGTH_SHORT).show();
-                Log.d("DENNIS_B", "Error saving user profile to AUTH: " + task.getException().getLocalizedMessage());
+                Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword():  Error saving user profile to AUTH: " + task.getException().getLocalizedMessage());
                 return;
             }
         });
@@ -176,6 +175,12 @@ public class SignUpActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    @Override
+    protected void onDestroy() {
+        Log.d("DENNIS_B", "(SignUpActivity) - onDestroy(): Destroying SignUpActivity");
+        super.onDestroy();
     }
 
     private void deviceImageSelector(){
