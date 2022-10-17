@@ -17,6 +17,8 @@ import android.widget.Toast;
 
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
@@ -94,7 +96,7 @@ public class SignUpActivity extends AppCompatActivity {
                 return;
             }
 
-            signIn(userEmail, userPassword, userName);
+            signUp(userEmail.trim(), userPassword.trim(), userName.trim());
 
             btn.setClickable(true);
 
@@ -107,17 +109,19 @@ public class SignUpActivity extends AppCompatActivity {
 
     }
 
-    private void signIn(String userEmail, String userPassword, String userName) {
+    private void signUp(String userEmail, String userPassword, String userName) {
 
-        Log.d("DENNIS_B", "(SignUpActivity) - signIn(): E-mail: " + userEmail);
-        Log.d("DENNIS_B", "(SignUpActivity) - signIn(): Password: " + userPassword);
-        Log.d("DENNIS_B", "(SignUpActivity) - signIn(): Display name: " + userName);
+        Log.d("DENNIS_B", "(SignUpActivity) - signUp(): E-mail: " + userEmail);
+        Log.d("DENNIS_B", "(SignUpActivity) - signUp(): Password: " + userPassword);
+        Log.d("DENNIS_B", "(SignUpActivity) - signUp(): Display name: " + userName);
 
         progressBar.setVisibility(View.VISIBLE);
 
         auth.createUserWithEmailAndPassword(userEmail, userPassword).addOnCompleteListener(task -> {
             if (task.isSuccessful()){
+
                 dbref.child("users").child(auth.getUid()).child("username").setValue(userName);
+
                 if(imageIsSelected){
                     //dbref.child("users").child(auth.getUid()).child("avatar").setValue("null");
                     UUID imageId = UUID.randomUUID();
@@ -129,6 +133,32 @@ public class SignUpActivity extends AppCompatActivity {
                                 String fileUrl = uri.toString();
                                 dbref.child("users").child(auth.getUid()).child("avatar").setValue(fileUrl).addOnSuccessListener(unused -> {
                                     Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Saved avatar URL to RTDB: user/" + auth.getUid() + "/avatar");
+
+                                    //update user with displayname and url
+                                    Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Update Firebase user profile" + ( (!userName.equals(null) && !userName.equals("")) && !uri.equals(null) ));
+                                    if ( (!userName.equals(null) && !userName.equals("")) && !uri.equals(null) ) {
+                                        Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Preparing to update Firebase user profile");
+                                        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+                                        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                                                .setDisplayName(userName)
+                                                .setPhotoUri(uri)
+                                                .build();
+
+                                        user.updateProfile(profileUpdates).addOnCompleteListener(task1 -> {
+                                            if (task1.isSuccessful()) {
+                                                // Toast.makeText(SignUp.this, "Displayname updated", Toast.LENGTH_SHORT).show();
+                                                // Sign in success, update UI with the signed-in user's information
+                                                Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Updated Firebase user profile with " + userName + "  and url");
+                                                Toast.makeText(SignUpActivity.this, "Account created successfully", Toast.LENGTH_SHORT).show();
+
+                                            } else {
+                                                //prgSignUp.setVisibility(View.INVISIBLE); <-- finally
+                                                Toast.makeText(SignUpActivity.this, "Displayname NOT updated, account not complete", Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+                                    }
+
                                 }).addOnFailureListener(e -> {
                                     Toast.makeText(SignUpActivity.this, "User avatar NOT saved", Toast.LENGTH_SHORT).show();
                                     Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword():  Error saving URL to RTDB: " + e.getLocalizedMessage());
@@ -144,6 +174,31 @@ public class SignUpActivity extends AppCompatActivity {
                 } else {
                     Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): No picture selected. Save 'null' to RTDB");
                     dbref.child("users").child(auth.getUid()).child("avatar").setValue("null");
+                    // still update
+                    Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Update Firebase user profile" + ( (!userName.equals(null) && !userName.equals(""))));
+                    if ( (!userName.equals(null) && !userName.equals(""))) {
+                        Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Preparing to update Firebase user profile");
+                        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+                        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                                .setDisplayName(userName)
+                                .build();
+
+                        user.updateProfile(profileUpdates).addOnCompleteListener(task1 -> {
+                            if (task1.isSuccessful()) {
+                                // Toast.makeText(SignUp.this, "Displayname updated", Toast.LENGTH_SHORT).show();
+                                // Sign in success, update UI with the signed-in user's information
+                                Log.d("DENNIS_B", "(SignUpActivity) - createUserWithEmailAndPassword(): Updated Firebase user profile with " + userName );
+                                //Toast.makeText(SignUpActivity.this, "Account created successfully", Toast.LENGTH_SHORT).show();
+
+                            } else {
+                                //prgSignUp.setVisibility(View.INVISIBLE); <-- finally
+                                Toast.makeText(SignUpActivity.this, "Displayname NOT updated, account not complete", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+
+
                 }
                 // Start MainActivity via onStart in LoginActivity since the newly created user IS logged in
                 finish();

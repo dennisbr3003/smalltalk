@@ -69,7 +69,7 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
-            signIn(userEmail, userPassword, view);
+            signIn(userEmail.trim(), userPassword.trim(), view);
 
         });
 

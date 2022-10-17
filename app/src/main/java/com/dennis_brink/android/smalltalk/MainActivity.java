@@ -25,18 +25,18 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
+import okhttp3.internal.cache.DiskLruCache;
+
 public class MainActivity extends AppCompatActivity {
 
     FirebaseAuth auth;
     FirebaseDatabase fb;
-    DatabaseReference fbref;
     DatabaseReference fbrefc;
     FirebaseUser fbuser;
     String username;
 
     List<SmallTalkUser> smallTalkUserList;
 
-    ValueEventListener recyclerViewEventListener;
     ChildEventListener recyclerViewChildEventListener;
 
     RecyclerView recyclerViewUsers;
@@ -47,8 +47,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
 
-        Log.d("DENNIS_B", "(MainActivity) - onDestroy(): Removing event listener <recyclerViewEventListener>");
-        fbref.child("users").child(fbuser.getUid()).child("username").removeEventListener(recyclerViewEventListener);
         Log.d("DENNIS_B", "(MainActivity) - onDestroy(): Removing child event listener <recyclerViewChildEventListener>");
         fbrefc.child("users").removeEventListener(recyclerViewChildEventListener);
         super.onDestroy();
@@ -66,45 +64,45 @@ public class MainActivity extends AppCompatActivity {
 
             auth = FirebaseAuth.getInstance();
             fb = FirebaseDatabase.getInstance();
-            fbref = fb.getReference();
             fbrefc = fb.getReference();
             fbuser = auth.getCurrentUser();
 
             Log.d("DENNIS_B", "(MainActivity) - onCreate(): Setup references to Firebase");
 
-            recyclerViewEventListener = new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    username = snapshot.getValue().toString(); // this is you: the logged in person, you should not be in de list of possible recipients
-                    Log.d("DENNIS_B", "(MainActivity) - onCreate/recyclerViewEventListener/onDataChange: Name: " + username);
-                    getUsersFromFirebase();
-                    adapter = new UserAdapter(smallTalkUserList, username, MainActivity.this);
-                    recyclerViewUsers.setAdapter(adapter);
-                }
-
-                @Override
-                public void onCancelled(@NonNull DatabaseError error) {
-
-                }
-            };
-            fbref.child("users").child(fbuser.getUid()).child("username").addValueEventListener(recyclerViewEventListener);
-
-            Log.d("DENNIS_B", "(MainActivity) - onCreate(): Created event listener <recyclerViewEventListener>");
-
             recyclerViewUsers = findViewById(R.id.rvUsers);
             recyclerViewUsers.setLayoutManager(new LinearLayoutManager(this));
             smallTalkUserList = new ArrayList<>();
+
+            setupChildEventListener();
+            adapter = new UserAdapter(smallTalkUserList, fbuser.getDisplayName(), MainActivity.this);
+            recyclerViewUsers.setAdapter(adapter);
 
         } catch (Exception e) {
             Log.d("DENNIS_B", "(MainActivity) - onCreate(): Exception " + e.getLocalizedMessage());
         }
     }
 
-    private void getUsersFromFirebase(){
+    private void setupChildEventListener(){
 
-        Log.d("DENNIS_B", "(MainActivity) - getUsersFromFirebase()");
+        Log.d("DENNIS_B", "(MainActivity) - setupChildEventListener()");
+
+        /*
+            What is the difference between ChildEventListener and ValueEventListener
+            Firebase interfaces?
+
+            They do almost same thing, though ChildEventListener can be sometimes more flexible:
+            with ChildEventListener you can specify different behavior for 4 actions (onChildAdded,
+            onChildChanged, onChildMoved and onChildRemoved), while ValueEventListener provides
+            only onDataChanged.
+            Also ChildEventListener provides DataSnapshots (immutable copies of the data) at
+            child's location while ValueEventListener provides a DataSnapshot of a whole node.
+         */
 
         recyclerViewChildEventListener = new ChildEventListener() {
+
+            // on start up this listener will find every node under the users node because the listener is
+            // initializing. It creates a list of nodes. We can use this to fill the list array and with that
+            // we can fill the adapter
 
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
@@ -128,32 +126,51 @@ public class MainActivity extends AppCompatActivity {
                 if (!key.equals(fbuser.getUid())) { // filter your self out, you should not be in the contacts list
                     smallTalkUser = new SmallTalkUser(name, url, key);
                     smallTalkUserList.add(smallTalkUser);
-                    adapter.notifyDataSetChanged();
+                    if(adapter != null) {
+                        int index = (smallTalkUserList.size() - 1);
+                        adapter.notifyItemInserted(index);
+                    }
                 }
             }
 
             @Override
             public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-
+                Log.d("DENNIS_B", "(MainActivity) - getUsersFromFirebase/onChildChanged: detected a change on user " + snapshot.getKey());
+                updateUserList(snapshot);
             }
 
             @Override
             public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+                Log.d("DENNIS_B", "(MainActivity) - getUsersFromFirebase/onChildRemoved: detected a removal on user " + snapshot.getKey());
 
             }
 
             @Override
             public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-
+                Log.d("DENNIS_B", "(MainActivity) - getUsersFromFirebase/onChildMoved: detected a move on user " + snapshot.getKey());
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
+                Log.d("DENNIS_B", "(MainActivity) - getUsersFromFirebase/onCancelled:" + error.toException().getLocalizedMessage());
             }
         };
         fbrefc.child("users").addChildEventListener(recyclerViewChildEventListener);
 
+    }
+
+    private void updateUserList(DataSnapshot snapshot){
+        String key = snapshot.getKey();
+        // find the correct record
+        for (int i=0; i<smallTalkUserList.size();i++) {
+            if (smallTalkUserList.get(i).getKey().equalsIgnoreCase(key)) {
+                Log.d("DENNIS_B", "(MainActivity) - getUsersFromFirebase/onChildAdded/updateUserList: index of object = " + i);
+                smallTalkUserList.get(i).setName(snapshot.child("username").getValue(String.class));
+                smallTalkUserList.get(i).setUrl(snapshot.child("avatar").getValue(String.class));
+                adapter.notifyItemChanged(i, smallTalkUserList.get(i));
+                Log.d("DENNIS_B", "(MainActivity) - getUsersFromFirebase/onChildAdded/updateUserList: Updated object " + i + " with new data");
+            }
+        }
     }
 
     @Override
