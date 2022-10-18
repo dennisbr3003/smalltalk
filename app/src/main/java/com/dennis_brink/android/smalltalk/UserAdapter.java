@@ -77,8 +77,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserHolder> {
         }
 
         holder.cardView.setOnClickListener(view -> {
-            Intent i = new Intent(mContext, SmallTalkActivity.class);
-            i.putExtra("source", userName);
+            Intent i = new Intent(mContext, ChatActivity.class);
             i.putExtra("target", smallTalkUser.getName());
             mContext.startActivity(i);
             // do not finish
@@ -117,7 +116,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.UserHolder> {
                 }
 
                 holder.cardView.setOnClickListener(view -> {
-                    Intent i = new Intent(mContext, SmallTalkActivity.class);
+                    Intent i = new Intent(mContext, ChatActivity.class);
                     i.putExtra("source", userName);
                     i.putExtra("target", name);
                     mContext.startActivity(i);
