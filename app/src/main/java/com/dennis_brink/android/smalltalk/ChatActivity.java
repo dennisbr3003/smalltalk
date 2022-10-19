@@ -1,7 +1,9 @@
 package com.dennis_brink.android.smalltalk;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Intent;
@@ -18,12 +20,17 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ChatActivity extends AppCompatActivity {
@@ -38,6 +45,9 @@ public class ChatActivity extends AppCompatActivity {
     DatabaseReference dbref;
     FirebaseAuth auth;
     FirebaseUser user;
+
+    MessageAdapter adapter;
+    List<ModelClass> list;
 
     String sender,receiver;
 
@@ -64,6 +74,9 @@ public class ChatActivity extends AppCompatActivity {
         imgBack = findViewById(R.id.imgBack);
         txtChat = findViewById(R.id.textViewChat);
 
+        rvChat.setLayoutManager(new LinearLayoutManager(this));
+        list = new ArrayList<>();
+
         txtChat.setText(receiver);
 
         fabSend.setOnClickListener(view -> {
@@ -77,6 +90,49 @@ public class ChatActivity extends AppCompatActivity {
         imgBack.setOnClickListener(view -> {
             onBackPressed();
         });
+        try {
+            getMessage();
+        }catch(Exception e){
+            Log.d("DENNIS_B", "(ChatActivity) - onCreate(): Error --> " + e.getLocalizedMessage());
+        }
+
+    }
+
+    private void getMessage() {
+
+        dbref.child("messages").child(sender).child(receiver).addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+                ModelClass modelClass = snapshot.getValue(ModelClass.class);
+                list.add(modelClass);
+                adapter.notifyItemInserted(list.size() - 1);
+                //rvChat.scrollToPosition(list.size() - 1);
+                Log.d("DENNIS_B", "(ChatActivity) - getMessage(2): modelclass content " + modelClass.toString());
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+
+        adapter = new MessageAdapter(list, sender);
+        rvChat.setAdapter(adapter);
 
     }
 
@@ -92,10 +148,10 @@ public class ChatActivity extends AppCompatActivity {
         map.put("from", sender);
 
         /*
-            map.put("/messages/" + sender + "/" + receiver + "/" + key + "/from/", sender);
-            map.put("/messages/" + sender + "/" + receiver + "/" + key + "/message/", message);
-            map.put("/messages/" + receiver + "/" + sender + "/" + key + "/from/", sender);
-            map.put("/messages/" + receiver + "/" + sender + "/" + key + "/message/", message);
+            map.put("/messages/" + from + "/" + receiver + "/" + key + "/from/", from);
+            map.put("/messages/" + from + "/" + receiver + "/" + key + "/message/", message);
+            map.put("/messages/" + receiver + "/" + from + "/" + key + "/from/", from);
+            map.put("/messages/" + receiver + "/" + from + "/" + key + "/message/", message);
 
             dbref.setValue(map);
 
@@ -111,10 +167,10 @@ public class ChatActivity extends AppCompatActivity {
         try {
             dbref.child("messages").child(sender).child(receiver).child(key).setValue(map).addOnCompleteListener(task -> {
                 if(task.isSuccessful()){
-                    Log.d("DENNIS_B", "(ChatActivity) - sendMessage(): message (sender <--> receiver) stored successfully");
+                    Log.d("DENNIS_B", "(ChatActivity) - sendMessage(): message (from <--> receiver) stored successfully");
                     dbref.child("messages").child(receiver).child(sender).child(key).setValue(map).addOnCompleteListener(task1 -> {
                         if(task1.isSuccessful()){
-                            Log.d("DENNIS_B", "(ChatActivity) - sendMessage(): message (receiver <--> sender) stored successfully");
+                            Log.d("DENNIS_B", "(ChatActivity) - sendMessage(): message (receiver <--> from) stored successfully");
                         } else {
                             Log.d("DENNIS_B", "(ChatActivity) - sendMessage(0): Error --> " + task.getException().getLocalizedMessage());
                         }
